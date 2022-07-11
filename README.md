@@ -55,7 +55,6 @@ When simulating an observation with KSIM all changes can be done within the `SET
 |redshift_orig | The original redshift of the spectrum to be simulated/redshifted.| 
 |mag_reduce | Factor to either increase or decrease the magnitude of the spectrum to be simulated. Above 1 will decrease the magnitude.|      
 |sky | If set to False sky will not be included in simulation.| 
-|delete_folders | Delete folders of byproduct produced by the simulation in process of results.| 
 |generate_sky_seeing_eff | If a seeing file for sky does not exist set this to True.|             
 |sky_seeing_eff_file_save_or_load | Name of sky seeing file to save or load.|     
 |generate_model_seeing_eff | If a seeing file for the object does not exist set this to True.|                             
