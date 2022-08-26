@@ -68,7 +68,7 @@ When simulating an observation with KSIM all changes can be done within the `SET
 |reset_R_E_spread_array | If a new energy resolution spread is desired set this to True.|               
 |reset_dead_pixel_array | If a new dead pixel spread is desired set this to True.|
 |reg_grid_factor | For order merging, factor for how large the regular grid should be.|    
-
+|number_optical_surfaces | How many optical surfaces between the primary mirror and the MKIDs. |
 
 
 ## Using KSIM
