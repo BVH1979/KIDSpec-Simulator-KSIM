@@ -103,8 +103,8 @@ if __name__ == '__main__':
     photon_spec_pre_optics = telescope_effects(photon_spec_post_atmos,plotting=extra_plots) 
     photon_sky_pre_optics = telescope_effects(photon_sky_post_atmos,plotting=False)
     
-    photon_spec_to_instr = optics_transmission(photon_spec_pre_optics,20)
-    photon_sky_to_instr = optics_transmission(photon_sky_pre_optics,20)
+    photon_spec_to_instr = optics_transmission(photon_spec_pre_optics,opt_surfaces)
+    photon_sky_to_instr = optics_transmission(photon_sky_pre_optics,opt_surfaces)
     
     if gen_model_seeing_eff == True:
         photon_spec_post_slit,seeing_transmiss_model = spec_seeing(photon_spec_to_instr,plotting=extra_plots)

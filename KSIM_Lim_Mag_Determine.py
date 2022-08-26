@@ -80,7 +80,7 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
     print('\n Simulating observation of %s.'%object_name)
     
     #sectioning the spectrum to chosen KIDSpec bandpass
-    model_spec1 = (original_spec[0],(original_spec[1]*10000) / mag_reduce_fac)
+    model_spec1 = (original_spec[0],(original_spec[1]) / mag_reduce_fac)
     model_spec = np.zeros((2,len(model_spec[0])))
     model_spec[0] += model_spec1[0]
     model_spec[1] += np.max(model_spec1[1])
@@ -115,8 +115,8 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
     photon_spec_pre_optics = telescope_effects(photon_spec_post_atmos,plotting=extra_plots)
     photon_sky_pre_optics = telescope_effects(photon_sky_post_atmos,plotting=False)
     
-    photon_spec_to_instr = optics_transmission(photon_spec_pre_optics,20)
-    photon_sky_to_instr = optics_transmission(photon_sky_pre_optics,20)
+    photon_spec_to_instr = optics_transmission(photon_spec_pre_optics,opt_surfaces)
+    photon_sky_to_instr = optics_transmission(photon_sky_pre_optics,opt_surfaces)
     
     if gen_model_seeing_eff == True:
         photon_spec_post_slit,seeing_transmiss_model = spec_seeing(photon_spec_to_instr,plotting=extra_plots)
