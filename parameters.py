@@ -117,6 +117,7 @@ cont_rem_poly = str_2_bool(params[54].split(' ')[2])
 reset_R_Es = str_2_bool(params[55].split(' ')[2])
 reset_dead_pixels = str_2_bool(params[56].split(' ')[2])
 reg_grid_factor = float(params[57].split(' ')[2])
+opt_surfaces = float(params[58].split(' ')[2])
 
 pix_mult = np.ndarray.astype((np.linspace(1,n_pixels,10)),dtype='int') #for progress updates during sections of the code involving looping through pixels
  
