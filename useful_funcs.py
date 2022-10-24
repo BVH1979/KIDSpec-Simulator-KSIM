@@ -821,9 +821,9 @@ def rebin_and_calc_SNR(spec,sky,wls,desired_R):
 def R_value(sim_spec,data_spec,plotting=False):
     
     if len(sim_spec) == 2:
-        x = sim_spec[1][~np.isnan(sim_spec[1])]
+        x = np.nan_to_num(sim_spec[1])
         x_1 = x
-        y = data_spec[1][~np.isnan(sim_spec[1])]
+        y = np.nan_to_num(data_spec[1])#[~np.isnan(sim_spec[1])]
         x = x[x < 1e308]
         x_2 = x
         x = x[x > -1e308]
@@ -1504,7 +1504,17 @@ def fwhm_fitter_lorentzian_ret_popt(data_x, data_y,mu,amp,offset,fwhm):
     return fwhm,fwhm_error,popt
 
 
+def pixel_sums_to_order_wavelength_converter(grid):
+    
+    out = np.zeros((len(grid[0,:]),len(grid[:,0])))
+    
+    grid_rot = np.rot90(grid,k=1)
+    
+    for i in range(len(grid[:,0])):
+        out[:,i] += grid_rot[:,i][::-1]
 
+    return out
+    
 
 
 

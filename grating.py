@@ -176,6 +176,7 @@ def grating_binning_high_enough_R(spec,w_o,all_w_o,order_list,eff,cutoff,IR=Fals
     
     pixel_sums = np.zeros((n_pixels,len(order_list))) #storing photons each pixel sees
     pixel_sums_count = np.zeros_like(pixel_sums)
+    pre_dead_pixel_sums = np.zeros_like(pixel_sums)
     spec_high_R = np.copy(spec)
     
     if dead_pixel_perc > 0.0:
@@ -263,6 +264,12 @@ def grating_binning_high_enough_R(spec,w_o,all_w_o,order_list,eff,cutoff,IR=Fals
                     pixel_sums[j,i] = np.random.normal(loc=pixel_sums[j,i],scale=np.sqrt(pixel_sums[j,i]))
                 if eff[i,j] < 5e-10:
                     pixel_sums[j,i] = 0
+                
+                
+        pre_dead_pixel_sums = np.copy(pixel_sums)        
+                
+        for i in range(len(pixel_sums[0,:])):
+            for j in range(len(pixel_sums[:,0])):       
                 if dead_pixel_perc > 0.0 and (j == dead_pixels).any():
                     pixel_sums[j,i] = 0
                     
@@ -284,7 +291,7 @@ def grating_binning_high_enough_R(spec,w_o,all_w_o,order_list,eff,cutoff,IR=Fals
         
         
     
-    return np.nan_to_num(pixel_sums),w_o_bins
+    return np.nan_to_num(pixel_sums),w_o_bins,pre_dead_pixel_sums
 
 
 def grating_binning_high_enough_R_lim_mag(spec,w_o,all_w_o,order_list,eff,cutoff,IR=False,OPT=False,plotting=False): #note: w_o here is wavelengths_orders

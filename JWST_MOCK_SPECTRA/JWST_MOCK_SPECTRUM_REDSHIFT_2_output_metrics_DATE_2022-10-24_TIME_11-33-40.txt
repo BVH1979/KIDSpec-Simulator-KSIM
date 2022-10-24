@@ -1,0 +1,65 @@
+> Output metrics for KIDSpec Simulation of object JWST_MOCK_SPECTRUM_REDSHIFT_2
+
+Date run: 2022-10-24 11:33:40.480280 
+
+> Input Parameters for simulation and instrument: 
+
+Telescope mirror diameter: 800 cm 
+Exposure time: 180 s 
+Seeing: 0.8 arcseconds 
+Airmass: 1.5 
+
+Slit width: 0.60 arcseconds 
+
+KIDSpec grating incidence angle: 25.0 deg 
+KIDSpec grating blaze angle: 25.0 deg 
+KIDSpec grating grooves: 173.8 /mm 
+
+Number of spectral pixels in each arm: 3800 
+Pixel plate scale: 0.3 
+Chosen MKID energy resolution at fiducial point: 40 
+Percentage of spectral pixels which are dead: 0.00 
+Number of dead spectral pixels in KIDSpec: 0 
+MKID energy resolution at fiducial point standard deviation for KIDSpec: 0.00 
+
+Simulation spectrum magnitudes:
+U --> 20.28964697142864 
+B --> 20.67324118985587 
+V --> 20.336685644811073 
+R --> 20.156950200791286 
+I --> 19.85752414277273 
+Z --> 19.478278561250807 
+Y --> 19.434094352271998 
+J --> 19.117909661557018 
+H --> 18.497855939950163 
+K --> N/A 
+L --> N/A 
+M --> N/A 
+N --> N/A 
+Q --> N/A 
+Flux reduced by factor of 1.00000
+Spectrum redshifted by 0.000
+
+> Result parameters: 
+
+OPT orders observed: 13 
+IR orders observed: 1 
+ 
+Wavelength range tested: 350 - 1900 nm 
+Recreated spectrum resolution: 7458 - 9358 
+Recreated spectrum resolution average: 8408 +/- 949 
+Average residuals (absoluted): (13.560 +/- 7.179)% 
+FWHM of residuals (not absoluted): 179.544 
+R value: 0.742 
+Average SNR: 2.450 +/- 0.730 
+Average X-Shooter CCD Noise included SNR: 0.994 
+Average SOXS CCD Noise included SNR: 1.508 
+Percentage of photons which were misidentified (total): nan
+Percentage of photons which were misidentified (average per pixel): nan
+
+Simulation run duration: 0:13:06.632774 (hours:minutes:seconds)
+
+Saturated pixels in OPT/Single arm:
+None
+Saturated pixels in NIR arm:
+None

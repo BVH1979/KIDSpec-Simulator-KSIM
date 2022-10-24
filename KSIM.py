@@ -21,7 +21,7 @@ from useful_funcs import data_extractor, telescope_effects, optics_transmission,
                 atmospheric_effects,rebinner_with_bins, \
                     R_value,redshifter,order_merge_reg_grid,grid_plotter,SNR_calc_grid,SNR_calc_pred_grid,grid_plotter_opp, \
                         model_interpolator,model_interpolator_sky,fwhm_fitter_lorentzian,continuum_removal, \
-                            rebinner_2d, fwhm_fitter_lorentzian_double, rebin_and_calc_SNR
+                            rebinner_2d, fwhm_fitter_lorentzian_double, rebin_and_calc_SNR, pixel_sums_to_order_wavelength_converter
 from parameters import *
 from flux_to_photons_conversion import photons_conversion,flux_conversion,flux_conversion_3
 from apply_QE import QE
@@ -163,11 +163,11 @@ if reset_dead_pixels == True:
 
 if orders_opt[0] != 1:
     print('\nBinning photons for OPT/Single arm (incoming object photons).')
-    pixel_sums_opt,order_wavelength_bins_opt = grating_binning_high_enough_R(spec_QE,order_wavelengths_opt,order_wavelengths,
+    
+    pixel_sums_opt,order_wavelength_bins_opt,pixel_sums_opt_pre_dead_pix = grating_binning_high_enough_R(spec_QE,order_wavelengths_opt,order_wavelengths,
                                                                                                                       orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
-
     print('\nOPT/Single arm sky photons.')
-    pixel_sums_opt_sky,_= grating_binning_high_enough_R(sky_QE,order_wavelengths_opt,order_wavelengths,
+    pixel_sums_opt_sky,_,pixel_sums_opt_pre_dead_pix_sky = grating_binning_high_enough_R(sky_QE,order_wavelengths_opt,order_wavelengths,
                                                   orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
     
     #adding the object and sky grids together
@@ -198,11 +198,13 @@ if orders_ir[0] != 1:
     
     #bins the photons onto relevant MKIDs and orders
     print('\nBinning photons for NIR arm (incoming object photons).')
-    pixel_sums_ir,order_wavelength_bins_ir = grating_binning_high_enough_R(spec_QE,order_wavelengths_ir,order_wavelengths,
+    
+    
+    pixel_sums_ir,order_wavelength_bins_ir,pixel_sums_ir_pre_dead_pix = grating_binning_high_enough_R(spec_QE,order_wavelengths_ir,order_wavelengths,
                                                                                                                 orders_ir,efficiencies_ir,cutoff,IR=True,OPT=False,
                                                                                                                     plotting=extra_plots)
     print('\nNIR arm sky photons.')
-    pixel_sums_ir_sky,_ = grating_binning_high_enough_R(sky_QE,order_wavelengths_ir,
+    pixel_sums_ir_sky,_,pixel_sums_ir_pre_dead_pix_sky = grating_binning_high_enough_R(sky_QE,order_wavelengths_ir,
                                                                 order_wavelengths,orders_ir,efficiencies_ir,
                                                                 cutoff,IR=True,OPT=False,plotting=extra_plots)
     
@@ -260,8 +262,12 @@ else:
 print('\nFinalising MKID response grids.')
 if IR_arm == True:
     kidspec_raw_output = np.zeros_like(order_wavelengths)
+    incoming_photon_per_pixels = np.zeros_like(order_wavelengths)
+    
     kidspec_raw_output[:len(order_list_ir)] += kidspec_resp_ir
     kidspec_raw_output[len(order_list_ir):] += kidspec_resp_opt
+    incoming_photon_per_pixels[:len(order_list_ir)] += np.rot90(pixel_sums_ir_pre_dead_pix,k=3)+np.rot90(pixel_sums_ir_pre_dead_pix_sky,k=3)
+    incoming_photon_per_pixels[len(order_list_ir):] += np.rot90(pixel_sums_opt_pre_dead_pix,k=3)+np.rot90(pixel_sums_opt_pre_dead_pix_sky,k=3)
     
     misidentified_spectrum = np.zeros_like(order_wavelengths)
     misidentified_spectrum[:len(order_list_ir)] += kidspec_mis_ir
@@ -274,24 +280,33 @@ if IR_arm == True:
     misidentified_sky_spectrum = np.zeros_like(order_wavelengths)
     misidentified_sky_spectrum[:len(order_list_ir)] += kidspec_sky_mis_ir
     misidentified_sky_spectrum[len(order_list_ir):] += kidspec_sky_mis_opt
+    
+    
+    
 else:
     kidspec_raw_output = np.zeros_like(order_wavelengths)
     misidentified_spectrum = np.zeros_like(order_wavelengths)
     kidspec_raw_output_sky = np.zeros_like(order_wavelengths)
     misidentified_sky_spectrum = np.zeros_like(order_wavelengths)
+    incoming_photon_per_pixels = np.zeros_like(order_wavelengths)
     
     kidspec_raw_output += kidspec_resp_opt
     misidentified_spectrum += kidspec_mis_opt
     kidspec_raw_output_sky += kidspec_sky_resp_opt
     misidentified_sky_spectrum += kidspec_sky_mis_opt
+    incoming_photon_per_pixels += pixel_sums_to_order_wavelength_converter(pixel_sums_opt_pre_dead_pix)+pixel_sums_to_order_wavelength_converter(pixel_sums_opt_pre_dead_pix_sky)
         
-percentage_misidentified_tot = (abs(np.sum(kidspec_raw_output+kidspec_raw_output_sky) \
-                                    - np.sum(misidentified_spectrum+misidentified_sky_spectrum)) \
-                                        / np.sum(kidspec_raw_output+kidspec_raw_output_sky) )*100
+#percentage_misidentified_tot = (abs(np.sum(kidspec_raw_output+kidspec_raw_output_sky) \
+#                                    - np.sum(misidentified_spectrum+misidentified_sky_spectrum)) \
+#                                        / np.sum(kidspec_raw_output+kidspec_raw_output_sky) )*100
     
-percentage_misidentified_pp = np.mean(abs((kidspec_raw_output+kidspec_raw_output_sky) \
-                                    - (misidentified_spectrum+misidentified_sky_spectrum)) \
-                                        / (kidspec_raw_output+kidspec_raw_output_sky) )*100
+#percentage_misidentified_pp = np.mean(abs((kidspec_raw_output+kidspec_raw_output_sky) \
+#                                    - (misidentified_spectrum+misidentified_sky_spectrum)) \
+#                                        / (kidspec_raw_output+kidspec_raw_output_sky) )*100
+
+percentage_misidentified_tot = abs(1 - (np.sum(np.nan_to_num(kidspec_raw_output)) / np.sum(np.nan_to_num(incoming_photon_per_pixels))))*100
+percentage_misidentified_pp = np.median(abs(1 - np.nan_to_num(((kidspec_raw_output)) / (incoming_photon_per_pixels),nan=1,posinf=1))*100)
+
 
 
 #############################################################################################################################################################################################
@@ -460,15 +475,15 @@ if fwhm_fitter == True:
 #############################################################################################################################################################################################
 #RESIDUALS
 #################################################################################################################################################################################################
-residuals = (SIM_total_flux_spectrum_model_bins[1] - model_spec[1]) / model_spec[1]
+residuals = (np.nan_to_num(SIM_total_flux_spectrum_model_bins[1]) - model_spec[1]) / model_spec[1]
 res1 = abs(residuals)
 nans= np.isnan(res1)
 res1[nans] = 0
 infs = np.isinf(res1)
 res1[infs] = 0
 
-residuals_av = np.median(res1[res1!=0])*100
-residuals_spread = scipy.stats.median_abs_deviation(res1[res1!=0])*100
+residuals_av = np.mean(res1[res1!=0])*100
+residuals_spread = np.std(res1[res1!=0])*100
 
 res2 = np.copy(residuals)
 nans= np.isnan(res2)
@@ -611,7 +626,8 @@ f.write('IR orders observed: %i \n \n'%len(orders_ir))
 f.write('Wavelength range tested: %i - %i nm \n'%(lambda_low_val,lambda_high_val))
 f.write('Recreated spectrum resolution: %i - %i \n'%(R_low,R_high))
 f.write('Recreated spectrum resolution average: %i +/- %i \n'%(av_R,av_R_dist))
-f.write('Average residuals (absoluted): (%.3f +/- %.3f)%% \n'%(residuals_av,residuals_spread))
+f.write('Mean average residuals (absoluted): %.3f %% \n'%(residuals_av))
+f.write('Standard deviation of absoluted residuals: %.3f %% \n'%(residuals_spread))
 f.write('FWHM of residuals (not absoluted): %.3f \n'%residuals_fwhm)
 f.write('R value: %.3f \n'%R_value_stat)
 f.write('Average SNR: %.3f +/- %.3f \n'%(SNR_av,SNR_spread))
