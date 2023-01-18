@@ -21,7 +21,8 @@ from useful_funcs import data_extractor, telescope_effects, optics_transmission,
                 atmospheric_effects,rebinner_with_bins, \
                     R_value,redshifter,order_merge_reg_grid,grid_plotter,SNR_calc_grid,SNR_calc_pred_grid,grid_plotter_opp, \
                         model_interpolator,model_interpolator_sky,fwhm_fitter_lorentzian,continuum_removal, \
-                            rebinner_2d, fwhm_fitter_lorentzian_double, rebin_and_calc_SNR, pixel_sums_to_order_wavelength_converter
+                            rebinner_2d, fwhm_fitter_lorentzian_double, rebin_and_calc_SNR, \
+                                pixel_sums_to_order_wavelength_converter,reduced_chi_test
 from parameters import *
 from flux_to_photons_conversion import photons_conversion,flux_conversion,flux_conversion_3
 from apply_QE import QE
@@ -155,11 +156,13 @@ orders,order_wavelengths,grating_efficiency,orders_opt,order_wavelengths_opt, \
 if reset_dead_pixels == True:
     try:
         print('\nRemoving dead pixel lists.')
-        os.remove('DEAD_PIXEL_LISTS/DEAD_PIXELS_OPT_ARM.npy')
-        os.remove('DEAD_PIXEL_LISTS/DEAD_PIXELS_IR_ARM.npy')
+        os.remove('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_OPT_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc))
+        os.remove('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_IR_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc))
+        os.remove('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD'%(folder_name_dead_pixel_array,dead_pixel_perc))
+        os.remove('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD'%(folder_name_dead_pixel_array,dead_pixel_perc))
     except:
         raise Exception('Unable to locate dead pixel arrays. Double check "DEAD_PIXEL_LISTS" directory')
-        
+   
 
 if orders_opt[0] != 1:
     print('\nBinning photons for OPT/Single arm (incoming object photons).')
@@ -228,9 +231,19 @@ if orders_ir[0] != 1:
 
 if reset_R_Es == True:
     print('\nResetting MKID energy resolution spread files.')
+    
+    try:
+        os.remove('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_IR.npy'%(folder_name_R_E_spread_array,r_e_spread))
+        os.remove('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_OPT.npy'%(folder_name_R_E_spread_array,r_e_spread))
+    except:
+        try:
+            os.mkdir('R_E_PIXELS/%s/%i_SCALE/'%(folder_name_R_E_spread_array,r_e_spread))
+        except:
+            os.mkdir('R_E_PIXELS/%s/'%(folder_name_R_E_spread_array))
+            os.mkdir('R_E_PIXELS/%s/%i_SCALE/'%(folder_name_R_E_spread_array,r_e_spread))
     default_R_Es = np.ones(n_pixels)*ER_band_low
-    np.save('R_E_PIXELS/R_E_PIXELS_IR.npy',default_R_Es)
-    np.save('R_E_PIXELS/R_E_PIXELS_OPT.npy',default_R_Es)
+    np.save('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_IR.npy'%(folder_name_R_E_spread_array,r_e_spread),default_R_Es)
+    np.save('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_OPT.npy'%(folder_name_R_E_spread_array,r_e_spread),default_R_Es)
 
 print('\nBeginning MKID response simulation for each arm and simultaneous sky exposure.')
 
@@ -304,8 +317,9 @@ else:
 #                                    - (misidentified_spectrum+misidentified_sky_spectrum)) \
 #                                        / (kidspec_raw_output+kidspec_raw_output_sky) )*100
 
-percentage_misidentified_tot = abs(1 - (np.sum(np.nan_to_num(kidspec_raw_output)) / np.sum(np.nan_to_num(incoming_photon_per_pixels))))*100
-percentage_misidentified_pp = np.median(abs(1 - np.nan_to_num(((kidspec_raw_output)) / (incoming_photon_per_pixels),nan=1,posinf=1))*100)
+percentage_misidentified_tot = (np.sum(abs(kidspec_raw_output-incoming_photon_per_pixels)) / np.sum(abs(incoming_photon_per_pixels)) )*100
+per_pixel = np.sum(abs(kidspec_raw_output-incoming_photon_per_pixels),axis=0) / np.sum(abs(incoming_photon_per_pixels),axis=0)
+percentage_misidentified_pp = np.median(per_pixel*100)
 
 
 
@@ -394,6 +408,7 @@ elif stand_star_factors_run == True: #generating standard star factors
 else:
     raise Exception('STANDARD STAR FACTOR RUN OPTION NOT SELECTED: TRUE OR FALSE')
 
+print('\nStandard star weights genertaed/applied, finalising simulation.')
 
 #plotting the effects of the standard star factors
 plt.figure()
@@ -413,6 +428,7 @@ coord_low = nearest(corrected_KS_spec[0],model_spec[0][0],'coord')
 coord_high = nearest(corrected_KS_spec[0],model_spec[0][-1],'coord')
 
 corrected_KS_spec = corrected_KS_spec[:,coord_low+1:coord_high]
+SIM_total_flux_spectrum_before_binning = np.copy(SIM_total_flux_spectrum)
 SIM_total_flux_spectrum = SIM_total_flux_spectrum[:,coord_low+1:coord_high]
 
 #rebinning back to model spectrum 
@@ -482,18 +498,19 @@ res1[nans] = 0
 infs = np.isinf(res1)
 res1[infs] = 0
 
-residuals_av = np.mean(res1[res1!=0])*100
-residuals_spread = np.std(res1[res1!=0])*100
+
+residuals_av = np.median(res1)
+residuals_spread = scipy.stats.median_absolute_deviation(res1)
 
 res2 = np.copy(residuals)
 nans= np.isnan(res2)
 res2[nans] = 0
 infs = np.isinf(res2)
 res2[infs] = 0
-res2 = res2[res2!=0]*100
+res2 = res2[res2!=0]
 plt.figure()
 plt.hist(res2,bins=100)
-plt.xlabel('Residuals / %')
+plt.xlabel('Fractional Residuals')
 plt.ylabel('Count')
 
 residuals_fwhm = (2.355*np.sqrt(np.var(res2)))
@@ -540,16 +557,6 @@ print('\n Simulation took', time_took,'(hours:minutes:seconds)')
 
 SNR_av = np.median(SNRs[(order_wavelengths > model_spec[0][0])*(order_wavelengths < model_spec[0][-1])*(SNRs >= 0)])
 SNR_spread = scipy.stats.median_abs_deviation(np.nan_to_num(SNRs[1])[np.nonzero(np.nan_to_num(SNRs[1]))])
-
-if r_e_spread == True:
-    R_E_pixels_IR = np.load('R_E_PIXELS/R_E_PIXELS_IR.npy')
-    R_E_pixels_OPT = np.load('R_E_PIXELS/R_E_PIXELS_OPT.npy')
-else:
-    R_E_pixels_IR = np.ones(n_pixels)*ER_band_low
-    R_E_pixels_OPT = np.ones(n_pixels)*ER_band_low
-
-R_E_IR_std = np.std(R_E_pixels_IR)
-R_E_OPT_std = np.std(R_E_pixels_OPT)
 
 av_R = np.median(Rs)
 av_R_dist = scipy.stats.median_abs_deviation(Rs)
@@ -603,12 +610,12 @@ if IR_arm == True:
     f.write('Percentage of spectral pixels which are dead: %.2f \n'%dead_pixel_perc)
     f.write('Number of dead spectral pixels in OPT arm: %i \n'%int(dead_pixel_perc*n_pixels/100))
     f.write('Number of dead spectral pixels in IR arm: %i \n'%int(dead_pixel_perc*n_pixels/100))
-    f.write('MKID energy resolution at fiducial point standard deviation for OPT arm: %.2f \n'%(R_E_OPT_std))
-    f.write('MKID energy resolution at fiducial point standard deviation for IR arm: %.2f \n\n'%(R_E_IR_std))
+    f.write('MKID energy resolution at fiducial point standard deviation for OPT arm: %.2f \n'%(r_e_spread))
+    f.write('MKID energy resolution at fiducial point standard deviation for IR arm: %.2f \n\n'%(r_e_spread))
 else:
     f.write('Percentage of spectral pixels which are dead: %.2f \n'%dead_pixel_perc)
     f.write('Number of dead spectral pixels in KIDSpec: %i \n'%int(dead_pixel_perc*n_pixels/100))
-    f.write('MKID energy resolution at fiducial point standard deviation for KIDSpec: %.2f \n\n'%(R_E_OPT_std))
+    f.write('MKID energy resolution at fiducial point standard deviation for KIDSpec: %.2f \n\n'%(r_e_spread))
 
 f.write('Simulation spectrum magnitudes:\n')
 for i in range(int(len(SIM_obj_mags[0]))):
@@ -666,6 +673,32 @@ else:
 
 
 f.close()
+
+
+#print('R_val:',R_value_stat)
+#print('Mis photons percentage tot:',percentage_misidentified_tot)
+#print('Mis photons percentage pp:',percentage_misidentified_pp)
+#print('Fractional residuals perc median:',residuals_av*100)
+#print('Median abs deviation of frac resid.:',residuals_spread*100 )
+'''
+nan_coords = np.isnan(SIM_total_flux_spectrum[1])
+nan_coords = [not t for t in nan_coords]
+from useful_funcs import reduced_chi_test_2
+upscaled_model = np.zeros((2,len(SIM_total_flux_spectrum[0])))
+upscaled_model[0] += SIM_total_flux_spectrum[0]
+upscaled_model[1] += np.interp(SIM_total_flux_spectrum[0],model_spec[0],model_spec[1])
+sky_ph = model_interpolator_sky(photon_spec_of_sky_orig,len(SIM_total_flux_spectrum[0]))
+factors_2 = factors[:,coord_low+1:coord_high]
+data_ph = photons_conversion(SIM_total_flux_spectrum,SIM_total_flux_spectrum)
+model_ph = photons_conversion(upscaled_model,upscaled_model)
+model_ph = (model_ph[0],model_ph[1]/(len(SIM_total_flux_spectrum[0])/len(model_spec[0])))
+model_ph_fac = model_ph[1]*factors_2[1]
+error_ph = np.sqrt(model_ph[1])*factors_2[1]
+reduced_chi_test_2(raw_sky_subbed_spec[1][coord_low+1:coord_high][error_ph>1],model_ph_fac[error_ph>1],error_ph[error_ph>1])[0]
+
+'''
+
+
 
 
 

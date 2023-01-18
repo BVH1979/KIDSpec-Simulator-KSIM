@@ -1410,13 +1410,32 @@ def three_d_rebinner(spec,wls):
 #########################################################################################################################################
 
 
-def reduced_chi_test(data,model,error,norm=True):
+def reduced_chi_test(data,model,error,err_from_model=False):
     data2 = data/np.mean(abs(data))
     model2 = model/np.mean(abs(data))
-    error2 = np.sqrt(abs(data2))    
+    if err_from_model == True:
+        error2 = np.sqrt(abs(data2)) 
+    else:
+        error2 = error / np.mean(abs(data))
     return np.sum(np.square(data2-model2) / np.square(error2)) / (len(data)-1)
 
+def reduced_chi_test_2(data,model,error,err_from_model=False):
+    nan_coords = np.isnan(data)
+    nan_coords +=  np.isinf(data)
+    nan_coords = [not t for t in nan_coords]
+    data2 = data[nan_coords]
+    model2 = model[nan_coords]
+    error2 = error[nan_coords]
+    return np.sum(np.square(data2-model2) / np.square(error2)) / (len(data2)-1),np.square(data2-model2) / np.square(error2)
 
+def reduced_chi_test_3(data,model):
+    nan_coords = np.isnan(data)
+    nan_coords +=  np.isinf(data)
+    nan_coords = [not t for t in nan_coords]
+    data2 = data[nan_coords]
+    model2 = model[nan_coords]
+    error2 = np.sqrt( np.sum(np.square(data2[0:-1]-data2[1:]))/(2*len(data2)) )
+    return np.sum(np.square(data2-model2) / error2) / (len(data2)-1)
 
 
 #########################################################################################################################################
@@ -1436,13 +1455,20 @@ def polynomial_line_continuum_removal(x,a,b,c):
     return (a*np.square(x)) + (b*x) + c
 
 def continuum_removal(spec,poly=False):
+    continuum_removed_spec_pre = np.copy(spec)
     continuum_removed_spec = np.copy(spec)
+    nan_coords = np.isnan(continuum_removed_spec_pre[1])
+    nan_coords +=  np.isinf(continuum_removed_spec_pre[1])
+    #nan_coords = [not t for t in nan_coords]
+    
+    continuum_removed_spec_pre[1][nan_coords] = 0
+    
     if poly == True:
-        popt,pcov = curve_fit(polynomial_line_continuum_removal,spec[0],spec[1])
-        continuum_removed_spec[1] -= polynomial_line_continuum_removal(spec[0],*popt)
+        popt,pcov = curve_fit(polynomial_line_continuum_removal,continuum_removed_spec_pre[0],continuum_removed_spec_pre[1])
+        continuum_removed_spec[1] -= polynomial_line_continuum_removal(continuum_removed_spec_pre[0],*popt)
     else:
-        popt,pcov = curve_fit(straight_line_continuum_removal,spec[0],spec[1])
-        continuum_removed_spec[1] -= straight_line_continuum_removal(spec[0],*popt)
+        popt,pcov = curve_fit(straight_line_continuum_removal,continuum_removed_spec_pre[0],continuum_removed_spec_pre[1])
+        continuum_removed_spec[1] -= straight_line_continuum_removal(continuum_removed_spec_pre[0],*popt)
     return continuum_removed_spec
 
 

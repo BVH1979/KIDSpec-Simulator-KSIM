@@ -39,7 +39,7 @@ orders,order_wavelengths,grating_efficiency,orders_opt,order_wavelengths_opt, \
          = grating_orders_2_arms('Casini',cutoff,plotting=extra_plots)
         
 detec_spec = wavelength_array_maker(order_wavelengths) #forms a 1D array based on the wavelengths each order sees
-    
+
 print('Exposure time = %i /s'%exposure_t)
 
 def KSIM_looper(mag_reduce_fac,blaze_coords):
@@ -125,7 +125,8 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
         photon_spec_post_slit = np.copy(photon_spec_to_instr)
         seeing_transmiss_model = np.load('Misc/%s.npy'%model_seeing_eff_file_save_or_load)
         photon_spec_post_slit[1] *= seeing_transmiss_model[1]
-        
+    
+    
     print('\nModel spectrum complete')
     
     if gen_sky_seeing_eff == True:
@@ -136,6 +137,13 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
         seeing_transmiss_sky = np.load('Misc/%s.npy'%sky_seeing_eff_file_save_or_load)
         photon_sky_post_slit[1] *= seeing_transmiss_sky[1]
     print('\nSky spectrum complete.')
+    
+    mirr_area = (np.pi*np.square(mirr_diam*0.5))
+    mirr_area_obscured = mirr_area - (np.pi * np.square((mirr_diam*0.5)*(1-cent_obs)))
+    mirr_area_ratio = mirr_area_obscured / mirr_area
+    
+    photon_spec_post_slit[1] *= mirr_area_ratio
+    photon_sky_post_slit[1] *= mirr_area_ratio
     
     spec_QE = QE(photon_spec_post_slit,constant=False,plotting=False)
     sky_QE = QE(photon_sky_post_slit,constant=False,plotting=False)
@@ -162,11 +170,11 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
     
     if orders_opt[0] != 1:
         print('\n Binning photons for OPT arm (incoming object photons).')
-        pixel_sums_opt,order_wavelength_bins_opt,_ = grating_binning_high_enough_R_lim_mag(spec_QE,order_wavelengths_opt,order_wavelengths,
+        pixel_sums_opt,order_wavelength_bins_opt = grating_binning_high_enough_R_lim_mag(spec_QE,order_wavelengths_opt,order_wavelengths,
                                                                                                                           orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
     
         print('\n OPT arm sky photons.')
-        pixel_sums_opt_sky,_,_= grating_binning_high_enough_R_lim_mag(sky_QE,order_wavelengths_opt,order_wavelengths,
+        pixel_sums_opt_sky,_= grating_binning_high_enough_R_lim_mag(sky_QE,order_wavelengths_opt,order_wavelengths,
                                                       orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
         
         #adding the object and sky grids together
@@ -188,11 +196,11 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
         #FIRST DOING IR / LOWER ORDERS 
         #bins the photons onto relevant MKIDs and orders
         print('\n  Binning photons for NIR arm (incoming object photons).')
-        pixel_sums_ir,order_wavelength_bins_ir,_ = grating_binning_high_enough_R_lim_mag(spec_QE,order_wavelengths_ir,order_wavelengths,
+        pixel_sums_ir,order_wavelength_bins_ir = grating_binning_high_enough_R_lim_mag(spec_QE,order_wavelengths_ir,order_wavelengths,
                                                                                                                     orders_ir,efficiencies_ir,cutoff,IR=True,OPT=False,
                                                                                                                         plotting=extra_plots)
         print('\n NIR arm sky photons.')
-        pixel_sums_ir_sky,_,_ = grating_binning_high_enough_R_lim_mag(sky_QE,order_wavelengths_ir,
+        pixel_sums_ir_sky,_ = grating_binning_high_enough_R_lim_mag(sky_QE,order_wavelengths_ir,
                                                                     order_wavelengths,orders_ir,efficiencies_ir,
                                                                     cutoff,IR=True,OPT=False,plotting=extra_plots)
         
