@@ -11,7 +11,7 @@ from scipy import interpolate
 import os
 
 from useful_funcs import gaussian_eq,nearest,wavelength_array_maker,KIDSpec_Express_V2
-from parameters import ER_band_low,lambda_low_val,lambda_high_val,pix_mult,folder,r_e_spread,ER_band_wl,IR_arm
+from parameters import *
 
 
 #####################################################################################
@@ -31,26 +31,26 @@ def apply_gaussian(order_list,w_o,spec,pixel,pixel_sums,pixel_R_Es,generate_R_Es
         
         #loading any MKID energy resolution variances
 
-        if generate_R_Es == False:
-            rand_R_E = ER_band_low
-        else:
-            if pixel_R_Es[int(pixel)] != ER_band_low:
-                rand_R_E = pixel_R_Es[int(pixel)]
+        if generate_R_Es == True and r_e_spread > 0.0 and pixel_R_Es[int(pixel)] == ER_band_low:
+            rand_R_E = np.random.normal(loc=ER_band_low,scale=r_e_spread)
+            pixel_R_Es[int(pixel)] = rand_R_E
+            if IR == False:
+                np.save('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_OPT.npy'%(folder_name_R_E_spread_array,r_e_spread),pixel_R_Es)
             else:
-                rand_R_E = np.random.normal(loc=ER_band_low,scale=3)
-                pixel_R_Es[int(pixel)] = rand_R_E
-                if IR == False:
-                    np.save('R_E_PIXELS/R_E_PIXELS_OPT.npy',pixel_R_Es)
-                else:
-                    np.save('R_E_PIXELS/R_E_PIXELS_IR.npy',pixel_R_Es)
+                np.save('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_IR.npy'%(folder_name_R_E_spread_array,r_e_spread),pixel_R_Es)
                     
-        if pixel_R_Es[int(pixel)] == 0:
-            pixel_R_Es[int(pixel)] += rand_R_E
+        else:
+            rand_R_E = pixel_R_Es[int(pixel)]
+                    
         
         if dual_arm==True:
             KID_R =  rand_R_E / np.sqrt(mu/ER_band_wl)
         else:
             KID_R =  rand_R_E / (mu/ER_band_wl)
+        
+        if KID_R < 1:
+            KID_R = 1
+            
         
         #defining gaussian 1sigma
         sig = mu / (KID_R * (2*np.sqrt( 2*np.log(2) )))  #using an equation from 'GIGA-Z: A 100,000 OBJECT SUPERCONDUCTING SPECTROPHOTOMETER FOR LSST FOLLOW-UP' 
@@ -190,73 +190,20 @@ def resampler(manip_array_order,manip_array_misident,order_list,pixel,w_o,w_o_ar
 ######################################################################################################
 
 
-def MKID_response(spec,order_list,w_o,w_o_arm,n_pixels,pixel_sums,
-                  IR=False,sky=False,dual_arm_=True,make_folder=False):
-    
-    if make_folder == True:
-        os.mkdir('%s/Resample/'%(folder))
-    file_path_resample = '%s/Resample/'%(folder)
-    
-    if r_e_spread == True and IR == False:
-        pixel_R_Es = np.load('R_E_PIXELS/R_E_PIXELS_OPT.npy')
-    elif r_e_spread == True and IR == True:
-        pixel_R_Es = np.load('R_E_PIXELS/R_E_PIXELS_IR.npy')
-    else:
-        pixel_R_Es = np.ones(n_pixels)*ER_band_low
-    
-    int_steps = np.ndarray.astype((np.linspace(0,n_pixels,100)),dtype='int') 
-    prog = 0
-    
-    print('\n')
-    for pixel in range(n_pixels): #loop applies gaussian, finds any overlap, then resamples to 1d spectrum format, then saves
-    
-        #if pixel == 3479:
-        #    pix_gauss,pixel_R_Es = apply_gaussian(order_list,w_o,spec,pixel,pixel_sums,pixel_R_Es,generate_R_Es=r_e_spread,IR=IR,plot=True,dual_arm=dual_arm_)
-        #    pixel_spec_ord,pixel_spec_mis = gaussian_overlaps(pix_gauss,pixel,order_list,w_o,spec,plotting=True)
-        #else:
-        pix_gauss,pixel_R_Es = apply_gaussian(order_list,w_o,spec,pixel,pixel_sums,pixel_R_Es,generate_R_Es=r_e_spread,IR=IR,plot=False,dual_arm=dual_arm_)
-        pixel_spec_ord,pixel_spec_mis = gaussian_overlaps(pix_gauss,pixel,order_list,w_o,spec,plotting=False)
-        
-        #saving resampled result
-        if IR == True and sky == False:
-            np.save('%s/spectrum_order_pixel_IR_%i.npy'%(file_path_resample,pixel),pixel_spec_ord)
-            np.save('%s/spectrum_misident_pixel_IR_%i.npy'%(file_path_resample,pixel),pixel_spec_mis)
-        
-        if IR == True and sky == True:
-            np.save('%s/spectrum_order_pixel_IR_sky_%i.npy'%(file_path_resample,pixel),pixel_spec_ord)
-            np.save('%s/spectrum_misident_pixel_IR_sky_%i.npy'%(file_path_resample,pixel),pixel_spec_mis)
-
-        if IR == False and sky == False:
-            np.save('%s/spectrum_order_pixel_OPT_%i.npy'%(file_path_resample,pixel),pixel_spec_ord)
-            np.save('%s/spectrum_misident_pixel_OPT_%i.npy'%(file_path_resample,pixel),pixel_spec_mis)
-        
-        if IR == False and sky == True:
-            np.save('%s/spectrum_order_pixel_OPT_sky_%i.npy'%(file_path_resample,pixel),pixel_spec_ord)
-            np.save('%s/spectrum_misident_pixel_OPT_sky_%i.npy'%(file_path_resample,pixel),pixel_spec_mis)
-    
-    
-        if (pixel == int_steps).any():
-            prog += 1
-            print('\r%i%% of pixels complete.'%prog,end='',flush=True)
-    
-    if r_e_spread == True:
-        if IR == True:
-            np.save('R_E_PIXELS/R_E_PIXELS_IR.npy',pixel_R_Es)
-        else:
-            np.save('R_E_PIXELS/R_E_PIXELS_OPT.npy',pixel_R_Es)
-    
-    return
 
 def MKID_response_V2(spec,order_list,w_o,w_o_arm,n_pixels,pixel_sums,
                   IR=False,sky=False,dual_arm_=True):
     
     
-    if r_e_spread == True and IR == False:
-        pixel_R_Es = np.load('R_E_PIXELS/R_E_PIXELS_OPT.npy')
-    elif r_e_spread == True and IR == True:
-        pixel_R_Es = np.load('R_E_PIXELS/R_E_PIXELS_IR.npy')
+    if r_e_spread > 0 and IR == False:
+        pixel_R_Es = np.load('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_OPT.npy'%(folder_name_R_E_spread_array,r_e_spread))
+        r_e_spread_bool = reset_R_Es
+    elif r_e_spread > 0 and IR == True:
+        pixel_R_Es = np.load('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_IR.npy'%(folder_name_R_E_spread_array,r_e_spread))
+        r_e_spread_bool = reset_R_Es
     else:
         pixel_R_Es = np.ones(n_pixels)*ER_band_low
+        r_e_spread_bool = reset_R_Es
     
     int_steps = np.ndarray.astype((np.linspace(0,n_pixels,100)),dtype='int') 
     prog = 0
@@ -267,7 +214,7 @@ def MKID_response_V2(spec,order_list,w_o,w_o_arm,n_pixels,pixel_sums,
     print('\n')
     for pixel in range(n_pixels): #loop applies gaussian, finds any overlap, then resamples to 1d spectrum format, then saves
     
-        pix_gauss,pixel_R_Es = apply_gaussian(order_list,w_o,spec,pixel,pixel_sums,pixel_R_Es,generate_R_Es=r_e_spread,IR=IR,plot=False,dual_arm=dual_arm_)
+        pix_gauss,pixel_R_Es = apply_gaussian(order_list,w_o,spec,pixel,pixel_sums,pixel_R_Es,generate_R_Es=r_e_spread_bool,IR=IR,plot=False,dual_arm=dual_arm_)
         pixel_spec_ord,pixel_spec_mis = gaussian_overlaps(pix_gauss,pixel,order_list,w_o,spec,plotting=False)
         
         resp_grid[:,pixel] += pixel_spec_ord[1]
@@ -291,12 +238,15 @@ def MKID_response_V2(spec,order_list,w_o,w_o_arm,n_pixels,pixel_sums,
 def MKID_response_Express(order_list,w_o,w_o_arm,n_pixels,pixel_sums,
                   IR=False,sky=False,dual_arm_=True,make_folder=False):
     
-    if r_e_spread == True and IR == False:
-        pixel_R_Es = np.load('R_E_PIXELS/R_E_PIXELS_OPT.npy')
-    elif r_e_spread == True and IR == True:
-        pixel_R_Es = np.load('R_E_PIXELS/R_E_PIXELS_IR.npy')
+    if r_e_spread > 0 and IR == False:
+        pixel_R_Es = np.load('R_E_PIXELS/%i_SCALE/R_E_PIXELS_OPT.npy'%r_e_spread)
+        r_e_spread_bool = reset_R_Es
+    elif r_e_spread > 0 and IR == True:
+        pixel_R_Es = np.load('R_E_PIXELS/%i_SCALE/R_E_PIXELS_IR.npy'%r_e_spread)
+        r_e_spread_bool = reset_R_Es
     else:
         pixel_R_Es = np.ones(n_pixels)*ER_band_low
+        r_e_spread_bool = False
     
     int_steps = np.ndarray.astype((np.linspace(0,n_pixels,100)),dtype='int') 
     prog = 0
@@ -323,7 +273,7 @@ def MKID_response_Express(order_list,w_o,w_o_arm,n_pixels,pixel_sums,
             prog += 1
             print('\r%i%% of pixels complete.'%prog,end='',flush=True)
     
-    if r_e_spread == True:
+    if r_e_spread > 0:
         if IR == True:
             np.save('R_E_PIXELS/R_E_PIXELS_IR.npy',pixel_R_Es)
         else:

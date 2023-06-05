@@ -176,26 +176,32 @@ def grating_binning_high_enough_R(spec,w_o,all_w_o,order_list,eff,cutoff,IR=Fals
     
     pixel_sums = np.zeros((n_pixels,len(order_list))) #storing photons each pixel sees
     pixel_sums_count = np.zeros_like(pixel_sums)
+    pre_dead_pixel_sums = np.zeros_like(pixel_sums)
     spec_high_R = np.copy(spec)
     
     if dead_pixel_perc > 0.0:
         
         if IR == True:
             try:
-                dead_pixels = np.load('DEAD_PIXEL_LISTS/DEAD_PIXELS_IR_ARM.npy')
+                dead_pixels = np.load('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_IR_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc))
             except:
                 no_pixels_dead = int(n_pixels * (dead_pixel_perc/100))
                 dead_pixels = np.random.randint(0,n_pixels,no_pixels_dead)
-                np.save('DEAD_PIXEL_LISTS/DEAD_PIXELS_IR_ARM.npy',dead_pixels)
+                np.save('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_IR_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc),dead_pixels)
         else:
             try:
-                dead_pixels = np.load('DEAD_PIXEL_LISTS/DEAD_PIXELS_OPT_ARM.npy')
+                dead_pixels = np.load('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_OPT_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc))
             except:
+                try:
+                    os.mkdir('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/'%(folder_name_dead_pixel_array,dead_pixel_perc))
+                except:
+                    os.mkdir('DEAD_PIXEL_LISTS/%s/'%(folder_name_dead_pixel_array))
+                    os.mkdir('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/'%(folder_name_dead_pixel_array,dead_pixel_perc))
                 no_pixels_dead = int(n_pixels * (dead_pixel_perc/100))
                 dead_pixels = np.random.randint(0,n_pixels,no_pixels_dead)
-                np.save('DEAD_PIXEL_LISTS/DEAD_PIXELS_OPT_ARM.npy',dead_pixels)
+                np.save('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_OPT_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc),dead_pixels)
                 if IR_arm == False:
-                    np.save('DEAD_PIXEL_LISTS/DEAD_PIXELS_IR_ARM.npy',np.zeros(no_pixels_dead))
+                    np.save('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_IR_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc),np.zeros(no_pixels_dead))
                 
     
     
@@ -263,6 +269,12 @@ def grating_binning_high_enough_R(spec,w_o,all_w_o,order_list,eff,cutoff,IR=Fals
                     pixel_sums[j,i] = np.random.normal(loc=pixel_sums[j,i],scale=np.sqrt(pixel_sums[j,i]))
                 if eff[i,j] < 5e-10:
                     pixel_sums[j,i] = 0
+                
+                
+        pre_dead_pixel_sums = np.copy(pixel_sums)        
+                
+        for i in range(len(pixel_sums[0,:])):
+            for j in range(len(pixel_sums[:,0])):       
                 if dead_pixel_perc > 0.0 and (j == dead_pixels).any():
                     pixel_sums[j,i] = 0
                     
@@ -284,7 +296,7 @@ def grating_binning_high_enough_R(spec,w_o,all_w_o,order_list,eff,cutoff,IR=Fals
         
         
     
-    return np.nan_to_num(pixel_sums),w_o_bins
+    return np.nan_to_num(pixel_sums),w_o_bins,pre_dead_pixel_sums
 
 
 def grating_binning_high_enough_R_lim_mag(spec,w_o,all_w_o,order_list,eff,cutoff,IR=False,OPT=False,plotting=False): #note: w_o here is wavelengths_orders
@@ -299,12 +311,28 @@ def grating_binning_high_enough_R_lim_mag(spec,w_o,all_w_o,order_list,eff,cutoff
     spec_high_R = np.copy(spec)
     
     if dead_pixel_perc > 0.0:
-        no_pixels_dead = int(n_pixels * (dead_pixel_perc/100))
-        dead_pixels = np.random.randint(0,n_pixels,no_pixels_dead)
+        
         if IR == True:
-            np.save('DEAD_PIXEL_LISTS/DEAD_PIXELS_IR_ARM.npy',dead_pixels)
+            try:
+                dead_pixels = np.load('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_IR_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc))
+            except:
+                no_pixels_dead = int(n_pixels * (dead_pixel_perc/100))
+                dead_pixels = np.random.randint(0,n_pixels,no_pixels_dead)
+                np.save('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_IR_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc),dead_pixels)
         else:
-            np.save('DEAD_PIXEL_LISTS/DEAD_PIXELS_OPT_ARM.npy',dead_pixels)
+            try:
+                dead_pixels = np.load('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_OPT_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc))
+            except:
+                try:
+                    os.mkdir('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/'%(folder_name_dead_pixel_array,dead_pixel_perc))
+                except:
+                    os.mkdir('DEAD_PIXEL_LISTS/%s/'%(folder_name_dead_pixel_array))
+                    os.mkdir('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/'%(folder_name_dead_pixel_array,dead_pixel_perc))
+                no_pixels_dead = int(n_pixels * (dead_pixel_perc/100))
+                dead_pixels = np.random.randint(0,n_pixels,no_pixels_dead)
+                np.save('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_OPT_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc),dead_pixels)
+                if IR_arm == False:
+                    np.save('DEAD_PIXEL_LISTS/%s/%i_PERC_DEAD/DEAD_PIXELS_IR_ARM.npy'%(folder_name_dead_pixel_array,dead_pixel_perc),np.zeros(no_pixels_dead))
     
     
     if IR == True:

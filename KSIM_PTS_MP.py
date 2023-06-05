@@ -161,46 +161,57 @@ if __name__ == '__main__':
     #BINNING PHOTONS ONTO MKIDS AND THEIR ORDER WAVELENGTHS FOR >>OPTICAL<< ARM
     #################################################################################################################################################################################################
     
-    if orders_opt[0] != 1:
-        print('\n Binning photons for OPT arm (incoming object photons).')
-        pixel_sums_opt,order_wavelength_bins_opt = grating_binning_high_enough_R(spec_QE,order_wavelengths_opt,order_wavelengths,
-                                                                                                                          orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
+if orders_opt[0] != 1:
+    print('\nBinning photons for OPT/Single arm (incoming object photons).')
     
-        print('\n OPT arm sky photons.')
-        pixel_sums_opt_sky,_= grating_binning_high_enough_R(sky_QE,order_wavelengths_opt,order_wavelengths,
-                                                      orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
+    pixel_sums_opt,order_wavelength_bins_opt,pixel_sums_opt_pre_dead_pix = grating_binning_high_enough_R(spec_QE,order_wavelengths_opt,order_wavelengths,
+                                                                                                                      orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
+    print('\nOPT/Single arm sky photons.')
+    pixel_sums_opt_sky,_,pixel_sums_opt_pre_dead_pix_sky = grating_binning_high_enough_R(sky_QE,order_wavelengths_opt,order_wavelengths,
+                                                  orders_opt,efficiencies_opt,cutoff,IR=False,OPT=True,plotting=extra_plots)
+    
+    #adding the object and sky grids together
+    pixel_sums_opt_no_sky = np.zeros_like(pixel_sums_opt)
+    pixel_sums_opt_no_sky += np.copy(pixel_sums_opt)
+    pixel_sums_opt += np.copy(pixel_sums_opt_sky)
+    
+    print('\nChecking for saturated pixels in OPT/Single arm')
+    sat_pix_opt = []
+    for i in range(n_pixels):
+        sum_ph = np.sum(pixel_sums_opt[i]) #checking the MKIDs arent seeing too many photons
+        if sum_ph > 100000*exposure_t: 
+            sat_pix_opt.append([i+1,int(sum_ph)])
+            print('WARNING: Pixel %i sees too many photons, %i/%i'%(i+1,int(sum_ph),int(100000*exposure_t)) )
         
-        #adding the object and sky grids together
-        pixel_sums_opt_no_sky = np.zeros_like(pixel_sums_opt)
-        pixel_sums_opt_no_sky += np.copy(pixel_sums_opt)
-        pixel_sums_opt += np.copy(pixel_sums_opt_sky)
         
+
+
+
+
+#############################################################################################################################################################################################
+#BINNING PHOTONS ONTO MKIDS AND THEIR ORDER WAVELENGTHS FOR >>NIR<< ARM
+#################################################################################################################################################################################################
+
+if len(orders_ir) == 0:
+    orders_ir = np.append(orders_ir,200)
+if orders_ir[0] != 1:
+    
+    #bins the photons onto relevant MKIDs and orders
+    print('\nBinning photons for NIR arm (incoming object photons).')
     
     
+    pixel_sums_ir,order_wavelength_bins_ir,pixel_sums_ir_pre_dead_pix = grating_binning_high_enough_R(spec_QE,order_wavelengths_ir,order_wavelengths,
+                                                                                                                orders_ir,efficiencies_ir,cutoff,IR=True,OPT=False,
+                                                                                                                    plotting=extra_plots)
+    print('\nNIR arm sky photons.')
+    pixel_sums_ir_sky,_,pixel_sums_ir_pre_dead_pix_sky = grating_binning_high_enough_R(sky_QE,order_wavelengths_ir,
+                                                                order_wavelengths,orders_ir,efficiencies_ir,
+                                                                cutoff,IR=True,OPT=False,plotting=extra_plots)
     
-    
-    #############################################################################################################################################################################################
-    #BINNING PHOTONS ONTO MKIDS AND THEIR ORDER WAVELENGTHS FOR >>NIR<< ARM
-    #################################################################################################################################################################################################
-    
-    if len(orders_ir) == 0:
-        orders_ir = np.append(orders_ir,200)
-    if orders_ir[0] != 1:
-        #FIRST DOING IR / LOWER ORDERS 
-        #bins the photons onto relevant MKIDs and orders
-        print('\n  Binning photons for NIR arm (incoming object photons).')
-        pixel_sums_ir,order_wavelength_bins_ir = grating_binning_high_enough_R(spec_QE,order_wavelengths_ir,order_wavelengths,
-                                                                                                                    orders_ir,efficiencies_ir,cutoff,IR=True,OPT=False,
-                                                                                                                        plotting=extra_plots)
-        print('\n NIR arm sky photons.')
-        pixel_sums_ir_sky,_ = grating_binning_high_enough_R(sky_QE,order_wavelengths_ir,
-                                                                    order_wavelengths,orders_ir,efficiencies_ir,
-                                                                    cutoff,IR=True,OPT=False,plotting=extra_plots)
-        
-        #adding the object and sky grids together
-        pixel_sums_ir_no_sky = np.zeros_like(pixel_sums_ir)
-        pixel_sums_ir_no_sky += pixel_sums_ir
-        pixel_sums_ir += pixel_sums_ir_sky
+    #adding the object and sky grids together
+    pixel_sums_ir_no_sky = np.zeros_like(pixel_sums_ir)
+    pixel_sums_ir_no_sky += pixel_sums_ir
+    pixel_sums_ir += pixel_sums_ir_sky
     
     #############################################################################################################################################################################################
     #SIMULATING MKID RESPONSES USING PTS

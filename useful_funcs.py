@@ -376,7 +376,66 @@ def spec_seeing(spec,plotting=False): #for single spaxel in slit
     
     return spec_out,(spec[0],slit_trans)
 
-
+'''
+def spec_seeing_with_circular(spec,plotting=False): #for single spaxel in slit
+    
+    object_x = np.linspace(-seeing*2,seeing*2,10000) + (off_centre * seeing) #x coordinates of intensity gaussian with off centre factor
+    
+    mean = (np.max(object_x) + np.min(object_x)) / 2       #finding central point of gaussian
+    
+    sigmas = sigma_calc(seeing,spec[0],airmass) #finding the sigma value for the intensity gaussians depending on wavelength
+    
+    slit_trans = []
+    
+    for i in range(len(sigmas)):
+        
+        if circular_slit == True:
+            
+            object_y = _eq_eq(np.linspace(-seeing*2,seeing*2,10000),mu=mean,sig=sigmas[i]) #y values for intensity (arbitrary units)
+        
+            norm_obj_y = object_y / np.sum(object_y) #normalisation
+            
+            obj_y_2d = np.meshgrid(norm_obj_y,norm_obj_y)
+            
+            obj_y_2d = obj_y_2d[1]*obj_y_2d[0]
+            
+            cx = (off_centre * seeing)
+            r = pix_fov
+            
+            mask = (norm_obj_y[np.newaxis,:]-cx)**2 + (norm_obj_y[:,np.newaxis]-cx)**2 < r**2
+            
+            slit_trans.append(np.sum(obj_y_2d[mask]))
+        
+        else:
+            
+            object_y = gaussian_eq(np.linspace(-seeing*2,seeing*2,10000),mu=mean,sig=sigmas[i]) #y values for intensity (arbitrary units)
+            
+            norm_obj_y = object_y / np.sum(object_y) #normalisation
+            
+            coords_high_y = nearest(object_x,pix_fov,'coord') #matching up the slit edges with the gaussian points
+            coords_low_y = nearest(object_x,-(pix_fov),'coord')
+            
+            slit_y = norm_obj_y[coords_low_y:coords_high_y+1]    #Finding the extent of the slit along the length of the slit
+        
+            slit_trans.append(np.sum(slit_y))  #summing whats left of normalised gaussian
+        
+        perc_done = ((i+1)/len(sigmas))*100
+        print('\r%.2f %% of wavelengths complete'%(perc_done),end='',flush=True)
+    
+    slit_trans = np.copy(np.asarray(slit_trans))
+    spec_out = np.zeros_like(spec)
+    spec_out[0] += spec[0]
+    spec_out[1] += spec[1]*slit_trans
+    
+    if plotting == True:
+        plt.figure()
+        plt.plot(spec_out[0],slit_trans,label='Slit transmission')
+        plt.xlabel('Wavelength / nm')
+        plt.ylabel('Transmission')
+        plt.legend(loc='best')
+    
+    return spec_out,(spec[0],slit_trans)
+'''
 
 
 ##########################################################################################################################################
@@ -795,7 +854,7 @@ def rebinner_2d(spec,wls,no_bins):
     return new_spec,new_wls
         
 
-def how_many_bins(wls, desired_R):
+def how_many_bins_2d(wls, desired_R):
     
     del_lam = wls[0][int(len(wls[0])/2)] / (2*desired_R)
     
@@ -803,9 +862,31 @@ def how_many_bins(wls, desired_R):
     
     return int(new_bins_no)
 
+
+def rebinner_1d(spec,wls,no_bins):
+    
+    new_spec = np.zeros(no_bins+1)
+    new_wls = np.zeros_like(new_spec)
+    new_wls += np.linspace(wls[0],wls[-1],no_bins+1)
+    for j in range(len(wls)):
+        coord_low = np.where(wls[j] >= new_wls)[0][-1]
+        
+        new_spec[coord_low] += spec[j]
+    
+    return new_spec,new_wls
+        
+
+def how_many_bins(wls, desired_R):
+    
+    del_lam = wls[int(len(wls)/2)] / (2*desired_R)
+    
+    new_bins_no = (wls[-1]-wls[0]) / del_lam
+    
+    return int(new_bins_no)
+
 def rebin_and_calc_SNR(spec,sky,wls,desired_R):
     
-    no_bins = how_many_bins(wls, desired_R)
+    no_bins = how_many_bins_2d(wls, desired_R)
     rebin_spec,rebin_wls = rebinner_2d(spec,wls,no_bins)
     rebin_sky,_ = rebinner_2d(sky,wls,no_bins)
     rebin_SNR,rebin_SNRs = SNR_calc_grid(rebin_spec,rebin_sky)
@@ -821,9 +902,9 @@ def rebin_and_calc_SNR(spec,sky,wls,desired_R):
 def R_value(sim_spec,data_spec,plotting=False):
     
     if len(sim_spec) == 2:
-        x = sim_spec[1][~np.isnan(sim_spec[1])]
+        x = np.nan_to_num(sim_spec[1])
         x_1 = x
-        y = data_spec[1][~np.isnan(sim_spec[1])]
+        y = np.nan_to_num(data_spec[1])#[~np.isnan(sim_spec[1])]
         x = x[x < 1e308]
         x_2 = x
         x = x[x > -1e308]
@@ -898,6 +979,7 @@ def where_in_array(arr,value):
 
 def gaussian_eq(x,mu=0.,sig=1.):
     return (1 / sig*np.sqrt(2*np.pi)) * np.exp( (x-mu)**2 / (-2. * sig**2) )
+
 
 
 #########################################################################################################################################
@@ -1410,13 +1492,42 @@ def three_d_rebinner(spec,wls):
 #########################################################################################################################################
 
 
-def reduced_chi_test(data,model,error,norm=True):
+def reduced_chi_test(data,model,error,err_from_model=False):
     data2 = data/np.mean(abs(data))
     model2 = model/np.mean(abs(data))
-    error2 = np.sqrt(abs(data2))    
+    if err_from_model == True:
+        error2 = np.sqrt(abs(data2)) 
+    else:
+        error2 = error / np.mean(abs(data))
     return np.sum(np.square(data2-model2) / np.square(error2)) / (len(data)-1)
 
+def reduced_chi_test_2(data,model,error,err_from_model=False):
+    nan_coords = np.isnan(data)
+    nan_coords +=  np.isinf(data)
+    nan_coords = [not t for t in nan_coords]
+    data2 = data[nan_coords]
+    model2 = model[nan_coords]
+    error2 = error[nan_coords]
+    return np.sum(np.square(data2-model2) / np.square(error2)) / (len(data2)-1),np.square(data2-model2) / np.square(error2)
 
+def reduced_chi_test_3(data,model):
+    nan_coords = np.isnan(data)
+    nan_coords +=  np.isinf(data)
+    nan_coords = [not t for t in nan_coords]
+    data2 = data[nan_coords]
+    model2 = model[nan_coords]
+    error2 = np.square(np.std(data2-model2))
+    print(np.sqrt(error2))
+    return np.sum(np.square(data2-model2) / error2) / (len(data2)-1)
+
+def reduced_chi_test_4(data,model,err_val): 
+    nan_coords = np.isnan(np.square(data-model))
+    nan_coords +=  np.isinf(np.square(data-model))
+    nan_coords = [not t for t in nan_coords]
+    data2 = data[nan_coords]
+    model2 = model[nan_coords]
+    error2 = np.square(err_val)
+    return np.sum(np.square(data2-model2) / error2) / (len(data2)-1)
 
 
 #########################################################################################################################################
@@ -1436,13 +1547,20 @@ def polynomial_line_continuum_removal(x,a,b,c):
     return (a*np.square(x)) + (b*x) + c
 
 def continuum_removal(spec,poly=False):
+    continuum_removed_spec_pre = np.copy(spec)
     continuum_removed_spec = np.copy(spec)
+    nan_coords = np.isnan(continuum_removed_spec_pre[1])
+    nan_coords +=  np.isinf(continuum_removed_spec_pre[1])
+    #nan_coords = [not t for t in nan_coords]
+    
+    continuum_removed_spec_pre[1][nan_coords] = 0
+    
     if poly == True:
-        popt,pcov = curve_fit(polynomial_line_continuum_removal,spec[0],spec[1])
-        continuum_removed_spec[1] -= polynomial_line_continuum_removal(spec[0],*popt)
+        popt,pcov = curve_fit(polynomial_line_continuum_removal,continuum_removed_spec_pre[0],continuum_removed_spec_pre[1])
+        continuum_removed_spec[1] -= polynomial_line_continuum_removal(continuum_removed_spec_pre[0],*popt)
     else:
-        popt,pcov = curve_fit(straight_line_continuum_removal,spec[0],spec[1])
-        continuum_removed_spec[1] -= straight_line_continuum_removal(spec[0],*popt)
+        popt,pcov = curve_fit(straight_line_continuum_removal,continuum_removed_spec_pre[0],continuum_removed_spec_pre[1])
+        continuum_removed_spec[1] -= straight_line_continuum_removal(continuum_removed_spec_pre[0],*popt)
     return continuum_removed_spec
 
 
@@ -1504,7 +1622,17 @@ def fwhm_fitter_lorentzian_ret_popt(data_x, data_y,mu,amp,offset,fwhm):
     return fwhm,fwhm_error,popt
 
 
+def pixel_sums_to_order_wavelength_converter(grid):
+    
+    out = np.zeros((len(grid[0,:]),len(grid[:,0])))
+    
+    grid_rot = np.rot90(grid,k=1)
+    
+    for i in range(len(grid[:,0])):
+        out[:,i] += grid_rot[:,i][::-1]
 
+    return out
+    
 
 
 

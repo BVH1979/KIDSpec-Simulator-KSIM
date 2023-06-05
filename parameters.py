@@ -23,9 +23,7 @@ def str_2_bool(val):
         raise ValueError("Accepted inputs are True or False")
         
 
-parameter_file = 'KSIM_INPUT_PARAMETERS.txt'
-
-file_param = open('SETUP_KSIM/KSIM_INPUT_PARAMETERS.txt','r')
+file_param = open('SETUP_KSIM/KSIM_INPUT_PARAMETERS_S.txt','r')
 
 params = file_param.readlines()
 
@@ -90,7 +88,7 @@ refl_start_val_ir = IR_alpha - refl_deg_ir #6.0 # Diffraction angles in degrees
 refl_end_val_ir = IR_alpha + refl_deg_ir #6.0  # Beta start and stop NEED NOT be symmetric around alpha in degrees
 
 dead_pixel_perc = float(params[31].split(' ')[2])
-r_e_spread = str_2_bool(params[32].split(' ')[2])
+r_e_spread = float(params[32].split(' ')[2])
 
 IR_arm = str_2_bool(params[33].split(' ')[2])
 cutoff = float(params[34].split(' ')[2])
@@ -116,8 +114,16 @@ double_fit = str_2_bool(params[53].split(' ')[2])
 cont_rem_poly = str_2_bool(params[54].split(' ')[2])
 reset_R_Es = str_2_bool(params[55].split(' ')[2])
 reset_dead_pixels = str_2_bool(params[56].split(' ')[2])
-reg_grid_factor = float(params[57].split(' ')[2])
-opt_surfaces = float(params[58].split(' ')[2])
+folder_name_R_E_spread_array =  params[57].split(' ')[2]
+folder_name_dead_pixel_array = params[58].split(' ')[2]
+reg_grid_factor = float(params[59].split(' ')[2])
+opt_surfaces = float(params[60].split(' ')[2])
+cent_obs = float(params[61].split(' ')[2]) / 100
+c_r_t = float(params[62].split(' ')[2])
+rebin_lower_specR = str_2_bool(params[63].split(' ')[2])
+rebin_specR = float(params[64].split(' ')[2])
+extra_fast = str_2_bool(params[65].split(' ')[2])
+lim_mag_det = str_2_bool(params[66].split(' ')[2])
 
 pix_mult = np.ndarray.astype((np.linspace(1,n_pixels,10)),dtype='int') #for progress updates during sections of the code involving looping through pixels
  
