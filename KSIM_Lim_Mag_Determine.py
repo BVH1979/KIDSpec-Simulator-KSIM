@@ -42,7 +42,7 @@ detec_spec = wavelength_array_maker(order_wavelengths) #forms a 1D array based o
 
 print('Exposure time = %i /s'%exposure_t)
 
-def KSIM_looper(mag_reduce_fac,blaze_coords):
+def KSIM_looper(mag_reduce_fac,blaze_coords,low_res=0,rebin_=False):
     #####################################################################################################################################################
     #SPECTRUM DATA FILE IMPORT AND CONVERTING TO PHOTONS
     ######################################################################################################################################################
@@ -83,7 +83,7 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
     model_spec1 = (original_spec[0],(original_spec[1]) / mag_reduce_fac)
     model_spec = np.zeros((2,len(model_spec[0])))
     model_spec[0] += model_spec1[0]
-    model_spec[1] += np.max(model_spec1[1])#*10000
+    model_spec[1] += np.max(model_spec1[1])*1
     
     low_c = nearest(model_spec[0],lambda_low_val,'coord')               
     high_c = nearest(model_spec[0],lambda_high_val,'coord')
@@ -125,7 +125,7 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
         photon_spec_post_slit = np.copy(photon_spec_to_instr)
         seeing_transmiss_model = np.load('Misc/%s.npy'%model_seeing_eff_file_save_or_load)
         photon_spec_post_slit[1] *= seeing_transmiss_model[1]
-    
+
     
     print('\nModel spectrum complete')
     
@@ -137,6 +137,8 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
         seeing_transmiss_sky = np.load('Misc/%s.npy'%sky_seeing_eff_file_save_or_load)
         photon_sky_post_slit[1] *= seeing_transmiss_sky[1]
     print('\nSky spectrum complete.')
+    
+
     
     mirr_area = (np.pi*np.square(mirr_diam*0.5))
     mirr_area_obscured = mirr_area - (np.pi * np.square((mirr_diam*0.5)*(1-cent_obs)))
@@ -312,20 +314,44 @@ def KSIM_looper(mag_reduce_fac,blaze_coords):
     SNRs_blaze[:,0] += order_wavelengths[:,blaze_coords]
     SNRs_blaze[:,1] += SNRs[:,blaze_coords]
     
-    #SNRs_rebin,wls_rebin = rebin_and_calc_SNR(raw_sky_subbed_spec_pre_ord_merge,
-    #                                          kidspec_raw_output_sky,
-    #                                          order_wavelengths,100)
-    #new_blaze_coord = int(len(wls_rebin[0])/2)
-    #SNRs_blaze = np.zeros((len(order_wavelengths[:,0]),2))
-    #SNRs_blaze[:,0] += wls_rebin[:,new_blaze_coord]
-    #SNRs_blaze[:,1] += SNRs_rebin[:,new_blaze_coord]
-    #SNRs = np.copy(SNRs_rebin)
+    if rebin_ == True:
+        SNRs_rebin,wls_rebin = rebin_and_calc_SNR(raw_sky_subbed_spec_pre_ord_merge,
+                                                  kidspec_raw_output_sky,
+                                                  order_wavelengths,low_res)
+        new_blaze_coord = int(len(wls_rebin[0])/2)
+        SNRs_blaze = np.zeros((len(order_wavelengths[:,0]),2))
+        SNRs_blaze[:,0] += wls_rebin[:,new_blaze_coord]
+        SNRs_blaze[:,1] += SNRs_rebin[:,new_blaze_coord]
+        SNRs = np.copy(SNRs_rebin)
     
     return SNRs_blaze,SIM_obj_mags,SNRs,pixel_sums_opt
 
 #############################################################################################################################################################################################
 #BEGINNING LOOP FOR LIMITING MAGNITUDE, WHERE SNR > 10
 #################################################################################################################################################################################################
+
+
+
+
+
+
+
+
+
+
+rebin = False
+new_res = 1000
+
+
+
+
+
+
+
+
+
+
+
 
 
 blaze_coord = int(np.round(n_pixels/2,decimals=0))
@@ -350,6 +376,9 @@ blaze_wl_mag_found_check = np.zeros(len(order_wavelengths[:,0]))
 
 mag_reduce_fac = mag_reduce #starting magnitude reduction
 
+
+
+
 while stop_condition != len(blaze_wl_mag_found_check):
     
     print('\nCurrent magnitude reduction factor: %.3f'%mag_reduce_fac)
@@ -361,7 +390,7 @@ while stop_condition != len(blaze_wl_mag_found_check):
     except:
         print('\nWill begin printing SNRs found after initial run.')
     
-    SNRs_blaze,current_mag,SNRs,pixel_sums_opt = KSIM_looper(mag_reduce_fac,blaze_coord)
+    SNRs_blaze,current_mag,SNRs,pixel_sums_opt = KSIM_looper(mag_reduce_fac,blaze_coord,low_res=new_res,rebin_=rebin)
 
     for i in range(len(SNRs_blaze[:,0])):
         if SNRs_blaze[i,1] < 5 and blaze_wl_mag_found_check[i] == 0:

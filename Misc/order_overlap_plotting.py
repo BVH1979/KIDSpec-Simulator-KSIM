@@ -5,9 +5,14 @@ Created on Mon Feb  1 15:16:48 2021
 @author: BVH
 """
 
-from useful_funcs import gaussian_eq
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+
+def gaussian_eq(x,mu=0.,sig=1.):
+    return (1 / sig*np.sqrt(2*np.pi)) * np.exp( (x-mu)**2 / (-2. * sig**2) )
+
 
 R_E = np.linspace(10,30,10)
 
@@ -29,5 +34,5 @@ for i in range(len(R_E)):
     plt.ylim(0,45)
     plt.legend(loc='best')
     
-    plt.savefig('R_E_%i_animation.png'%R_E[i],dpi=1000)
+    #plt.savefig('R_E_%i_animation.png'%R_E[i],dpi=1000)
 

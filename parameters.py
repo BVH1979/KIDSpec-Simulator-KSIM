@@ -23,7 +23,7 @@ def str_2_bool(val):
         raise ValueError("Accepted inputs are True or False")
         
 
-file_param = open('SETUP_KSIM/KSIM_INPUT_PARAMETERS.txt','r')
+file_param = open('SETUP_KSIM/KSIM_INPUT_PARAMETERS_S.txt','r')
 
 params = file_param.readlines()
 
@@ -119,6 +119,11 @@ folder_name_dead_pixel_array = params[58].split(' ')[2]
 reg_grid_factor = float(params[59].split(' ')[2])
 opt_surfaces = float(params[60].split(' ')[2])
 cent_obs = float(params[61].split(' ')[2]) / 100
+c_r_t = float(params[62].split(' ')[2])
+rebin_lower_specR = str_2_bool(params[63].split(' ')[2])
+rebin_specR = float(params[64].split(' ')[2])
+extra_fast = str_2_bool(params[65].split(' ')[2])
+lim_mag_det = str_2_bool(params[66].split(' ')[2])
 
 pix_mult = np.ndarray.astype((np.linspace(1,n_pixels,10)),dtype='int') #for progress updates during sections of the code involving looping through pixels
  

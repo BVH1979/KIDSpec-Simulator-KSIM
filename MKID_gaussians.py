@@ -47,6 +47,9 @@ def apply_gaussian(order_list,w_o,spec,pixel,pixel_sums,pixel_R_Es,generate_R_Es
             KID_R =  rand_R_E / np.sqrt(mu/ER_band_wl)
         else:
             KID_R =  rand_R_E / (mu/ER_band_wl)
+        
+        if KID_R < 1:
+            KID_R = 1
             
         
         #defining gaussian 1sigma
