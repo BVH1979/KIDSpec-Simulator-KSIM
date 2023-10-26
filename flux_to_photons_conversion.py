@@ -17,7 +17,7 @@ def photons_conversion(spec,orig_spec,plotting=False):
     
     flux = spec[1]
     
-    area_mirr = np.pi * ((0.5*mirr_diam)**2.) #collecting area
+    area_mirr = np.pi * ((0.5*mirr_diam)**2.) * ((100-cent_obs)/100) #collecting area
     
     numerator = flux * binstep * area_mirr * exposure_t #binstep should be in units of cm, but is in units of nm from seperation of wavelength data 
                                                         #entries from the spectrum data
