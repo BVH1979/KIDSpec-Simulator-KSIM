@@ -39,8 +39,8 @@ class KSIM_main:
 
     def __init__(self,suppress_plots=False,input_mag_reduce=None):
         print('\nBeginning KSIM...\n')
-        self.suppress_plots = suppress_plots
-        self.input_mag_reduce = input_mag_reduce
+        self.suppress_plots = suppress_plots #prevents plots being generated
+        self.input_mag_reduce = input_mag_reduce #if a magnitude reduction factor was inputted to this initialisation, it is made active here
         
     def run_sim(self,row_change=None):
         
@@ -55,7 +55,7 @@ class KSIM_main:
         if TLUSTY == True:
             if row_change != None:
                 row = row_change
-            model_spec = data_extractor_TLUSTY_joint_spec(object_file_1,object_file_2,row,plotting=extra_plots)  
+            model_spec = data_extractor_TLUSTY_joint_spec(object_file_1,object_file_2,row,plotting=extra_plots)   #loads the particular TLUSTY spectrum files
             self.model_spec_initial = model_spec
         elif supported_file_extraction == True:
             #If data that will be used is from the DRs of XShooter then set XShooter to True, since their FITS files are setup differently to the ESO-XShooter archive
@@ -63,9 +63,9 @@ class KSIM_main:
             model_spec = data_extractor(object_file,Seyfert=False,plotting=extra_plots)
             self.model_spec_initial = model_spec
         else:
-            model_spec_initial = np.loadtxt('%s/%s'%(folder,object_file)) #previous text file containing two columns, wavelength in nm and flux in ergcm^{-2}s^{-1}\AA^{-1} 
+            model_spec_initial = np.loadtxt('%s/%s'%(folder,object_file)) #loads text file containing two columns, wavelength in nm and flux in ergcm^{-2}s^{-1}\AA^{-1} 
             
-            if np.shape(model_spec_initial) != (len(model_spec_initial[:,0]),2):
+            if np.shape(model_spec_initial) != (len(model_spec_initial[:,0]),2): #checks the format of the loaded text file is correct
                 raise Exception('Format for input file should be 2 columns, one for wavelength in nm and one for flux in ergcm^{-2}s^{-1}\AA^{-1}')
                                             
             
@@ -78,19 +78,19 @@ class KSIM_main:
         
         original_spec = np.copy(model_spec)
         
-        if redshift > 0:
+        if redshift > 0: #if a redshift has been set in the input parameters, it is applied in this 'if' statement
             print('\n Redshifting.')
-            model_spec = redshifter(model_spec,redshift_orig,redshift)
+            model_spec = redshifter(model_spec,redshift_orig,redshift) 
             self.model_spec_redshift = model_spec
         print('\nSimulating observation of %s.'%object_name)
         
-        if self.input_mag_reduce is not None:
+        if self.input_mag_reduce is not None: #if a change in magnitude has been set in the input parameters, it is applied in this 'if' statement
             mag_reduce = self.input_mag_reduce
         #sectioning the spectrum to chosen KIDSpec bandpass
         model_spec = (model_spec[0],model_spec[1] / mag_reduce) 
         self.model_spec_mag_reduce = model_spec
         
-        low_c = nearest(model_spec[0],lambda_low_val,'coord')               
+        low_c = nearest(model_spec[0],lambda_low_val,'coord')   #these two lines trim the spectrum to the wavelength range of interest set in the input
         high_c = nearest(model_spec[0],lambda_high_val,'coord')
         #model_spec = (model_spec[0][low_c+1:high_c],model_spec[1][low_c+1:high_c])
         
@@ -99,7 +99,7 @@ class KSIM_main:
         photon_spec_no_eff_original = photons_conversion(model_spec,model_spec,plotting=extra_plots)
         self.photon_spec_no_eff_original = photon_spec_no_eff_original
         
-        #increasing number of points in model spectrum
+        #increasing number of points in model spectrum, this is to allow for any resolution of spectrum to be loaded into KSIM, and make it compatible with the sky spectrum
         photon_spec_no_eff = model_interpolator(photon_spec_no_eff_original,200000)
         self.photon_spec_no_eff = photon_spec_no_eff
         
@@ -134,12 +134,12 @@ class KSIM_main:
         photon_sky_to_instr = optics_transmission(photon_sky_pre_optics,opt_surfaces)
         self.photon_sky_to_instr = photon_sky_to_instr
         
-        if gen_model_seeing_eff == True:
+        if gen_model_seeing_eff == True: #if this is True, a new seeing model will be calculated for this particular simulation setup
             photon_spec_post_slit,seeing_transmiss_model = spec_seeing(photon_spec_to_instr,plotting=extra_plots)
             self.photon_spec_post_slit = photon_spec_post_slit
             self.seeing_transmiss_model = seeing_transmiss_model
             np.save('Misc/%s.npy'%model_seeing_eff_file_save_or_load,seeing_transmiss_model)
-        else:
+        else: #a seeing model previously generated is loaded, these can be found in the Misc folder
             photon_spec_post_slit = np.copy(photon_spec_to_instr)
             seeing_transmiss_model = np.load('Misc/%s.npy'%model_seeing_eff_file_save_or_load)
             photon_spec_post_slit[1] *= seeing_transmiss_model[1]
@@ -148,7 +148,7 @@ class KSIM_main:
             
         print('\nModel spectrum complete')
         
-        if gen_sky_seeing_eff == True:
+        if gen_sky_seeing_eff == True: #likewise for sky
             photon_sky_post_slit,seeing_transmiss_sky = spec_seeing(photon_sky_to_instr)
             self.photon_sky_post_slit = photon_sky_post_slit
             self.seeing_transmiss_sky = seeing_transmiss_sky
@@ -161,7 +161,7 @@ class KSIM_main:
             self.seeing_transmiss_sky = seeing_transmiss_sky
         print('\nSky spectrum complete.')
         
-        if extra_plots == True:
+        if extra_plots == True: #plots the transmission due to the slit
                 plt.figure()
                 plt.plot(photon_spec_to_instr[0],photon_spec_to_instr[1],'r-',label='Pre slit')
                 plt.plot(photon_spec_post_slit[0],photon_spec_post_slit[1],'b-',alpha=0.7,label='Post slit')
@@ -248,20 +248,13 @@ class KSIM_main:
                     print('WARNING: Pixel %i sees too many photons, %i/%i'%(i+1,int(sum_ph),int((1e6/deadtime))*exposure_t) )
             self.sat_pix_opt = sat_pix_opt
             
-            wl_check_all = np.where(np.min(abs(order_wavelengths-656.13)) == abs(order_wavelengths-656.13))
+            wl_check_all = np.where(np.min(abs(order_wavelengths-656.13)) == abs(order_wavelengths-656.13)) #checking whether an exact wavelength appears in multiple orders
             wl_check = [wl_check_all[0][0],wl_check_all[1][0]]
             sum_ph = np.sum(pixel_sums_opt[int(n_pixels/2),4])
             self.sum_ph = sum_ph
             sum_ph_wl_check = np.sum(pixel_sums_opt[wl_check[1],wl_check[0]])
             self.sum_ph_wl_check = sum_ph_wl_check
-            #if sum_ph > (1e6/deadtime)*exposure_t:
-            #    print('\n\n\nSATURATED at Central Order Blaze   %i / %i\n\n\n'%(sum_ph,int(1e6/deadtime)*exposure_t))
-            #else:
-            #    print('\n\n\nNOT Saturated at Central Order Blaze   %i / %i\n\n\n'%(sum_ph,int(1e6/deadtime)*exposure_t))
-            #if sum_ph_wl_check > (1e6/deadtime)*exposure_t:
-                #print('\n\n\nSATURATED at Halpha  %i / %i\n\n\n'%(sum_ph_wl_check,int(1e6/deadtime)*exposure_t))
-            #else:
-                #print('\n\n\nNOT Saturated at Halpha  %i / %i\n\n\n'%(sum_ph_wl_check,int(1e6/deadtime)*exposure_t))
+            
                 
         
         #############################################################################################################################################################################################
@@ -272,7 +265,7 @@ class KSIM_main:
             orders_ir = np.append(orders_ir,200)
         if orders_ir[0] != 1:
             
-            #bins the photons onto relevant MKIDs and orders
+            #bins the photons onto relevant MKIDs and orders for NIR arm (if active)
             print('\nBinning photons for NIR arm (incoming object photons).')
             
             
@@ -325,7 +318,7 @@ class KSIM_main:
                     os.mkdir('R_E_PIXELS/%s/%i_SCALE/'%(folder_name_R_E_spread_array,r_e_spread))
             default_R_Es = np.ones(n_pixels)*ER_band_low
             np.save('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_IR.npy'%(folder_name_R_E_spread_array,r_e_spread),default_R_Es)
-            np.save('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_OPT.npy'%(folder_name_R_E_spread_array,r_e_spread),default_R_Es)
+            np.save('R_E_PIXELS/%s/%i_SCALE/R_E_PIXELS_OPT.npy'%(folder_name_R_E_spread_array,r_e_spread),default_R_Es) #setups new energy resolutions to be generated later in MKID response
         
         print('\nBeginning MKID response simulation for each arm and simultaneous sky exposure.')
         
@@ -444,8 +437,8 @@ class KSIM_main:
             self.misidentified_sky_spectrum = misidentified_sky_spectrum
 
         
-        percentage_misidentified_tot = (np.sum(abs(kidspec_raw_output-incoming_photon_per_pixels)) / np.sum(abs(incoming_photon_per_pixels)) )*100
-        per_pixel = np.sum(abs(kidspec_raw_output-incoming_photon_per_pixels),axis=0) / np.sum(abs(incoming_photon_per_pixels),axis=0)
+        percentage_misidentified_tot = (np.sum(abs(kidspec_raw_output-incoming_photon_per_pixels)) / np.sum(abs(incoming_photon_per_pixels)) )*100 #% misidentified photons
+        per_pixel = np.sum(abs(kidspec_raw_output-incoming_photon_per_pixels),axis=0) / np.sum(abs(incoming_photon_per_pixels),axis=0) #% misid. photons on each pixel
         percentage_misidentified_pp = np.median(per_pixel*100)
         self.percentage_misidentified_tot = percentage_misidentified_tot
         self.percentage_misidentified_pp = percentage_misidentified_pp
